@@ -14,7 +14,7 @@ from geometry_msgs.msg import Twist, PoseStamped
 import ros_numpy
 import numpy as np
 from tf.transformations import euler_from_quaternion , quaternion_from_euler
-
+#import cv_bridge
 
 #GENERAL PURPUSES VARIABLES
 pub_hz=0.1 #main loop frequency
@@ -28,21 +28,22 @@ cmd_vel = Twist()
 class robot_class:
     def __init__(self): #It is done only the first iteration
         #Variables to store temporally the info of human detectection at each time instant
-        self.pos_raw=np.zeros([self.n_human,3]) #robot position from odometry
-        self.pos_corrected=np.zeros([self.n_human,3]) #robot position corrected from camera feedback
+        self.pos_raw=[0,0,0] #robot position from odometry
+        self.pos_corrected=[0,0,0] #robot position corrected from camera feedback
         self.color_image=np.zeros((848,400,3), np.uint8) #rgb image, initial value
         self.checkpoint_id=0 #identification number of the location along the rows 
         self.vel=[0,0,0] #[linear_x,linear_y,angular]
     
     def image_callback(self,rgb):
         color_image = ros_numpy.numpify(rgb) #replacing cv_bridge
-        color_image = color_image[...,[2,1,0]].copy() #from bgr to rgb
-        self.line_following(color_image)
+        self.color_image = color_image[...,[2,1,0]].copy() #from bgr to rgb
+        self.line_following(self.color_image)
+        #self.line_following(rgb)
    
     def position_callback(self,pose):
-        self.pos_raw[0]=pose.position.x
-        self.pos_raw[1]=pose.position.y
-        quat = pose.orientation    
+        self.pos_raw[0]=pose.pose.position.x
+        self.pos_raw[1]=pose.pose.position.y
+        quat = pose.pose.orientation    
         # From quaternion to Euler
         angles = euler_from_quaternion((quat.x,quat.y,quat.z,quat.w))
         theta = angles[2]
@@ -68,8 +69,9 @@ class robot_class:
             #cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
             # CONTROL starts
             err = cx - w/2
-            self.vel[0] = 0.2
+            self.vel[0] = 0.1
             self.vel[2] = -float(err) / 100
+            print("ERROR",-float(err)/100)
             #self.cmd_vel_pub.publish(self.twist)
             # CONTROL ends
         #Publishing Mask
@@ -81,20 +83,22 @@ class robot_class:
         msg_img.step = 3 * mask.shape[1]
         msg_img.data = np.array(mask).tobytes()
         pub_img.publish(msg_img)
+        #cv2.imshow("mask",mask)
+        #cv2.waitKey(3)
         #Publishing control signals
         cmd_vel.linear.x = robot.vel[0]
         cmd_vel.linear.y = robot.vel[1]
         cmd_vel.angular.z = robot.vel[2]
-        cmd_pub.publish(cmd_vel) 
+        #cmd_pub.publish(cmd_vel) 
         
 #MAIN
     
 robot=robot_class()  
+#robot.bridge=cv_bridge.CvBridge()
 rospy.init_node('leo_navigation',anonymous=True)
 # Setup and call subscription
 rospy.Subscriber('/camera/image_raw', Image, robot.image_callback)
-rospy.Subscriber('/wheel_pose',)
-rospy.Subscriber('/robot_pose', PoseStamped, robot.position_callback)  
+rospy.Subscriber('/wheel_pose',PoseStamped, robot.position_callback)  
 #Rate setup
 rate = rospy.Rate(1/pub_hz) # main loop frecuency in Hz
 while not rospy.is_shutdown():
