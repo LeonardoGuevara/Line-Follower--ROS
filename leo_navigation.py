@@ -91,7 +91,9 @@ class robot_class:
                 cmd_vel.linear.y = robot.vel[1]
                 cmd_vel.angular.z = 0.17
                 cmd_pub.publish(cmd_vel)
+            else:
                 self.checkpoint_id=1
+            
         
         
         #Publishing Mask
