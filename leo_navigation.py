@@ -84,15 +84,17 @@ class robot_class:
             cmd_vel.linear.x = robot.vel[0]
             cmd_vel.linear.y = robot.vel[1]
             cmd_vel.angular.z = robot.vel[2]
-            cmd_pub.publish(cmd_vel) 
+            cmd_pub.publish(cmd_vel)
+            if self.checkpoint_id==0:
+                self.checkpoint_id=1
         else:
-            if self.checkpoint_id!=0:
+            if self.checkpoint_id>1:
                 cmd_vel.linear.x = 0.1
                 cmd_vel.linear.y = robot.vel[1]
                 cmd_vel.angular.z = 0.17
                 cmd_pub.publish(cmd_vel)
-            else:
-                self.checkpoint_id=1
+            elif self.checkpoint_id==1:
+                self.checkpoint_id=2
             
         
         
