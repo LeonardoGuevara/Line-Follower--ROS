@@ -32,6 +32,7 @@ class robot_class:
         self.color_image=np.zeros((848,400,3), np.uint8) #rgb image, initial value
         self.mask_image=np.zeros((848,400,3), np.uint8) #rgb image, initial value
         self.checkpoint_id=0 #identification number of the location along the rows 
+        self.turning=False
         self.vel=[0,0,0] #[linear_x,linear_y,angular]
     
     def image_callback(self,rgb):
@@ -52,12 +53,15 @@ class robot_class:
    
     def line_following(self,image):
         #image = self.bridge.imgmsg_to_cv2(msg,desired_encoding='bgr8')
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) 
+        #hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV) 
         # change below lines to map the color you wanted robot to follow
-        lower_yellow = np.array([ 40,  0,  0])
-        upper_yellow = np.array([255, 255, 100])
-        mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        lower_yellow = np.array([ 0,  170,  0]) #40,0,0  50,0,0
+        upper_yellow = np.array([255, 255, 250]) #255,255,100   100,100,100
+        mask = cv2.inRange(image, lower_yellow, upper_yellow)
         self.mask_image=mask
+        #cv2.imshow("mask",mask)
+        #cv2.waitKey(1)
+
         h, w, d = image.shape
         search_top = 3*h/4
         search_bot = 3*h/4 + 20
@@ -66,13 +70,13 @@ class robot_class:
         mask[0:h, 0:150] = 0
         mask[0:h, w-150:w] = 0
         M = cv2.moments(mask)
+        #print(M)
         if M['m00'] > 0:
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
             result=cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
-            #cv2.imshow("result",result)
-            #cv2.imshow("mask",mask)
-            #cv2.waitKey(1)
+            cv2.imshow("result",result)
+            cv2.waitKey(1)
             # CONTROL starts
             err = cx - w/2
             self.vel[0] = 0.1
@@ -87,14 +91,20 @@ class robot_class:
             cmd_pub.publish(cmd_vel)
             if self.checkpoint_id==0:
                 self.checkpoint_id=1
+            if self.checkpoint_id==1 and self.turning==True:
+                self.checkpoint_id=2
         else:
-            if self.checkpoint_id>1:
+            if self.checkpoint_id==1:
                 cmd_vel.linear.x = 0.1
                 cmd_vel.linear.y = robot.vel[1]
                 cmd_vel.angular.z = 0.17
                 cmd_pub.publish(cmd_vel)
-            elif self.checkpoint_id==1:
-                self.checkpoint_id=2
+                self.turning=True
+            elif self.checkpoint_id==2:
+                cmd_vel.linear.x = 0
+                cmd_vel.linear.y = 0
+                cmd_vel.angular.z = 0
+                cmd_pub.publish(cmd_vel)
             
         
         
